@@ -134,3 +134,8 @@ code{font-size:13px}
 .pitem{display:block;width:100%;text-align:left;min-height:46px;padding:12px;border-bottom:1px solid var(--faint)}
 .pitem:hover{background:rgba(236,229,216,.05)}
 .pitem.on{color:var(--lav);font-weight:590}
+
+.hd.big{font-size:19px;line-height:24px;font-weight:650;color:var(--ink)}
+.tapsec{border-bottom:1px solid var(--faint);margin-bottom:6px}
+.maplink{color:var(--lav);font-size:14px;margin-left:6px;text-decoration:underline;text-underline-offset:3px}
+figure svg{width:100%;height:auto;display:block}
