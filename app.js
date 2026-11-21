@@ -304,7 +304,7 @@ const contactLine=()=>SET.contact?`<p class="contact">Questions about the study?
 async function rWelcome(){S=null;closeModal();const done=await get('meta','done');
   if(done&&SET.mode==='online'){OPTIN={sent:!!done.optin};return rThanks()}
   const n=nShown(),mins=Math.max(3,Math.round(n*.3));
-  app.innerHTML=`<div class="center"><div class="box"><h1 id="ttl">Where does it feel from?</h1><p>A short study about how shops and restaurants look. You'll see about ${n} photos and say which part of the world each place's style feels like it's from (not where it actually is). It takes about ${mins} minutes.</p>
+  app.innerHTML=`<div class="center"><div class="box"><h1 id="ttl">Place the style</h1><p>A short study about how shops and restaurants look. You'll see about ${n} photos and say which part of the world each place's style feels like it's from (not where it actually is). It takes about ${mins} minutes.</p>
   <p class="small">This is part of an academic design research project${SET.inst?' '+esc(SET.inst):''}. Your answers are used only for this research. They won't be sold, shared with companies, or used to train AI.</p>
   <p class="small">It's anonymous: we don't ask for your name, and nothing you answer identifies you. You can stop at any time by closing the page; answers you've already given are kept.</p>
   <p class="small">You need to be 18 or older. That's a standard research-ethics rule for studies with adults, not a content warning: the photos are just shops and restaurants.</p>
