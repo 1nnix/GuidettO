@@ -420,7 +420,9 @@ async function rLog(){const l=(await all('log')).reverse();app.innerHTML=`<div c
 
 /* ---------- live data (admin) ---------- */
 let LIVE=null,liveTimer=null;
-const perPhoto=rows=>{const per={};rows.filter(t=>!String(t.image).startsWith('ATTN')&&t.skipped!=='yes').forEach(t=>{const p=per[t.image]=per[t.image]||{n:0,e:0,r:0,taps:0,group:t.group};p.n++;if(EAST.has(t.region))p.e++;if(t.recognise==='Yes')p.r++;p.taps+=+t.n_taps||0});return per};
+// Google Sheets turns text like "008" into the number 8; map it back to the photo's real ID.
+const normId=x=>{const v=String(x??'');if(URLS[v]||IMGS.some(i=>i.id===v))return v;if(/^\d+$/.test(v)){const p=v.padStart(3,'0');if(URLS[p]||IMGS.some(i=>i.id===p))return p}return v};
+const perPhoto=rows=>{const per={};rows.filter(t=>!String(t.image).startsWith('ATTN')&&t.skipped!=='yes').forEach(t=>{const id=normId(t.image);const p=per[id]=per[id]||{n:0,e:0,r:0,taps:0,group:t.group};p.n++;if(EAST.has(t.region))p.e++;if(t.recognise==='Yes')p.r++;p.taps+=+t.n_taps||0});return per};
 async function loadLive(){const box=document.getElementById('live');if(!box)return;
   try{const d=await sheetGet('all');if(!document.getElementById('live'))return;if(!d.ok){box.innerHTML='<p class="warn">The sheet refused the PIN.</p>';return}LIVE=d;drawLive()}
   catch(e){box.innerHTML=`<p class="warn">Couldn't reach the sheet. ${esc(e.message||'')}</p>`}
@@ -461,7 +463,7 @@ function rPin(msg){app.innerHTML=`<div class="center"><div class="box" style="ma
 /* ---------- live heatmaps (admin) ---------- */
 let HEAT={cue:'All',norec:false,timer:null};
 function tapsByImage(rows){const m={};for(const r of rows){if(String(r.image).startsWith('ATTN')||r.skipped==='yes')continue;if(HEAT.norec&&r.recognise==='Yes')continue;
-  const o=m[r.image]=m[r.image]||{views:0,ea:0,taps:[],group:r.group};o.views++;if(EAST.has(r.region))o.ea++;
+  const id=normId(r.image);const o=m[id]=m[id]||{views:0,ea:0,taps:[],group:r.group};o.views++;if(EAST.has(r.region))o.ea++;
   for(let k=1;k<=MAXTAPS;k++){const x=parseFloat(r[`tap${k}_x`]),y=parseFloat(r[`tap${k}_y`]),c=r[`tap${k}_cue`];if(isNaN(x)||isNaN(y))continue;if(HEAT.cue!=='All'&&c!==HEAT.cue)continue;o.taps.push([x,y])}}return m}
 const HEAT_RAMP=[[0,[60,40,120,0]],[.25,[90,60,200,140]],[.5,[166,142,230,190]],[.75,[236,200,120,215]],[1,[255,250,235,235]]];
 function rampAt(t){for(let i=1;i<HEAT_RAMP.length;i++){const[a,ca]=HEAT_RAMP[i-1],[b,cb]=HEAT_RAMP[i];if(t<=b){const f=(t-a)/(b-a);return ca.map((v,j)=>v+(cb[j]-v)*f)}}return HEAT_RAMP[HEAT_RAMP.length-1][1]}
