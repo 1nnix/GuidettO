@@ -2,7 +2,7 @@
  "app": "1.0",
  "exported_at": "2026-11-21T00:03:28.414Z",
  "settings": {
-  "nMain": 12,
+  "nMain": 14,
   "nBonus": 10,
   "bonus": true,
   "attn": true,
