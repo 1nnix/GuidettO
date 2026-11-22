@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Place the style</title>
+<script>
+// Case-insensitive redirect: /guidetto, /GUIDETTO/... → /GuidettO/... (keeps ?src= and the rest of the path)
+(function(){
+  var p = location.pathname, m = p.match(/^\/guidetto(\/.*)?$/i);
+  if (m) location.replace('/GuidettO' + (m[1] || '/') + location.search + location.hash);
+})();
+</script>
+<style>body{margin:0;background:#1c1c1e;color:#ece5d8;font:17px/1.5 system-ui,sans-serif;display:grid;place-items:center;height:100vh;text-align:center}a{color:#a68ee6}</style>
+</head>
+<body>
+<p>Page not found.<br><a href="/GuidettO/">Go to Place the style</a></p>
+</body>
+</html>
