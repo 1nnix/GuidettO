@@ -1,4 +1,4 @@
-const VER='1.0';
+const VER='1.1';
 const MODE=window.ORIENT_MODE==='public'?'public':'admin';
 const SRC=(()=>{try{return(new URLSearchParams(location.search).get('src')||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,30)}catch(e){return''}})();
 const REGIONS=['North America','Latin America','Europe','Africa','Middle East','India / South Asia','South-East Asia','East Asia','Australia & Oceania'];
@@ -132,7 +132,7 @@ function trialRow(t,p){const r={participant:t.pid,mode:p.mode||'',source:p.sourc
   Object.assign(r,{tap_cancels:t.tapCancels,taps_removed:t.tapRemovals||0,taps_discarded:t.tapsDiscarded,recognise:t.recog??t.know??'',recognise_changed:t.recogChanged?'yes':'',rt_recognise_ms:ms(t.rtRecog),
     rt_next_ms:ms(t.rtNext),help_opens:t.helps,skipped:t.skipped?'yes':'',attention_pass:t.attnPass||'',note:t.note,saved_at:t.savedAt,app_version:t.app});return r}
 function partRow(p){return{participant:p.id,mode:p.mode||'',source:p.source||'',age:p.age,design_background:p.design,ea_media:p.media,been_to_ea:p.beenEA,country:p.country||'',state:p.state,consent:p.consent?'yes':'',audio_consent:p.audio||'',
-  researcher_note:p.rnote||'',started:p.startedAt,ended:p.endedAt,status:p.status,bonus_choice:p.bonusChoice,attention_pass:p.attnPass||'',main_order:(p.mainOrder||p.coreOrder||[]).join(' '),full_pair:p.fullPair||'',bonus_order:(p.bonusOrder||[]).join(' '),app_version:p.app}}
+  researcher_note:p.rnote||'',started:p.startedAt,ended:p.endedAt,status:p.status,bonus_choice:p.bonusChoice,attention_pass:p.attnPass||'',extra_likert:p.extraLikert||'',extra_rank:p.extraRank||'',extra_open:p.extraOpen||'',extra_skipped:p.extraSkipped||'',main_order:(p.mainOrder||p.coreOrder||[]).join(' '),full_pair:p.fullPair||'',bonus_order:(p.bonusOrder||[]).join(' '),app_version:p.app}}
 
 /* ---------- online sending: queue on device, send when there is an endpoint ---------- */
 let flushing=false;
@@ -250,8 +250,10 @@ function rSide(){const tap=tappable(),pend=!!T.pending,side=document.getElementB
     tp+='</section>'}
   h=tap?tp+reg:reg;
   const ready=T.region&&!pend&&(!tap||T.taps.length);
+  const hint=!T.region?'Pick where it feels from':pend?'Say what you tapped':(tap&&!T.taps.length)?'Tap the photo to continue':'';
   if(ready){if(!T.img.attn)h+=`<section class="sec"><button class="sw${T.recog==='Yes'?' on':''}" data-act="recog" role="switch" aria-checked="${T.recog==='Yes'}"><span>${esc(recogLabel())}</span><span class="tg"></span></button></section>`;
-    h+=`<button class="next" data-act="next">Next</button>`}
+}
+  h+=`<div class="nextwrap"><button class="next" data-act="next" ${ready?'':'disabled'}>${ready?'Next':esc(hint)}</button></div>`;
   side.innerHTML=h;
   side.querySelectorAll('[data-tapk]').forEach(inp=>inp.oninput=()=>{const t=T.taps[+inp.dataset.tapk];if(t)t.other=inp.value});
   const o=document.getElementById('other');if(o)o.oninput=()=>{const was=tappable();T.other=o.value;if(was!==tappable()){if(!tappable()&&(T.taps.length||T.pending)){T.tapsDiscarded+=T.taps.length;T.taps=[];T.pending=null}
@@ -269,7 +271,7 @@ async function saveTrial(skipped){const im=T.img;
     attnPass:im.attn&&!skipped?(T.region===ATTN_ANSWER?'yes':'no'):'',note:T.note,savedAt:iso(),app:VER};
   await put('trials',rec);if(rec.attnPass)await setPart({attnPass:rec.attnPass});
   const p=await get('participants',S.pid)||{};queue('answers',trialRow(rec,p))}
-async function advance(){S.i++;if(S.i>=curList().length){if(S.phase==='main'){if(S.bonusOrder.length){S.stage='bonusOffer';await saveSession();return render()}return finish('complete')}return finish('complete')}
+async function advance(){S.i++;if(S.i>=curList().length){if(S.phase==='main'){S.stage='extra';await saveSession();return render()}return finish('complete')}
   await saveSession();rTrial()}
 
 /* ---------- researcher menu (during a session) ---------- */
@@ -292,7 +294,7 @@ async function menuAct(m){closeModal();
 
 /* ---------- participant screens ---------- */
 function render(){closeModal();if(!S)return MODE==='public'?rWelcome():rHome();
-  if(S.stage==='intro')return rIntro();if(S.stage==='trial')return rTrial();if(S.stage==='bonusOffer')return rBonus();if(S.stage==='thanks')return rThanks()}
+  if(S.stage==='intro')return rIntro();if(S.stage==='trial')return rTrial();if(S.stage==='bonusOffer')return rBonus();if(S.stage==='extra')return rExtra();if(S.stage==='thanks')return rThanks()}
 const nShown=()=>Math.min(SET.nMain,units('main').length);
 const HOWTO=()=>`<ol class="steps"><li>Look at the photo and pick which part of the world its look and style bring to mind. You're not guessing where the photo was taken. Go with your first instinct.</li>
 <li>If you pick East Asia or South-East Asia, or type a place under “Somewhere specific”, tap the one thing in the photo that gave it away, then say what it is. Add a second or third only if you're sure. Tap × to remove a point.</li>
@@ -326,7 +328,20 @@ function rAbout(){const ch=(k,opts)=>`<div class="chips">${opts.map(o=>`<button 
   ${inP?`<div class="field"><span class="lbl">Is it OK to record audio while you do this?</span>${ch('audio',YN)}</div>`:''}
   <button class="btn pri big" data-act="startP" id="cont" ${aboutOk()?'':'disabled'}>Continue</button></div></div>`;
 }
-function rIntro(){app.innerHTML=`<div class="center"><div class="box"><h1>How it works</h1>${HOWTO()}<button class="btn pri big" data-act="begin">Start</button></div></div>`}
+const SHORT=()=>`<ol class="steps"><li>Pick where the place's <b>style</b> feels like it's from, not where it actually is.</li><li>If you pick East or South-East Asia, <b>tap what gave it away</b> on the photo.</li><li>Go with your first instinct. The <b>?</b> button explains everything else.</li></ol>${MAP_HTML}`;
+const RANK_ITEMS=['Colour','Lettering','Objects','The name'];
+const LIK=['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'];
+let EX={lik:0,rank:[],open:''};
+function rExtra(){app.innerHTML=`<div class="page"><div class="wrap about" style="max-width:640px"><h1>3 quick questions</h1><p class="sub">Optional, about 40 seconds.</p>
+  <div class="field"><span class="lbl">1. “Indian shops that use East Asian styles feel authentic.”</span><div class="chips">${LIK.map((l,i)=>`<button class="chip${EX.lik===i+1?' on':''}" data-act="exLik" data-v="${i+1}">${l}</button>`).join('')}</div></div>
+  <div class="field"><span class="lbl">2. Tap these in order: what gives a place away as East Asian <b>most</b>, first.</span><div class="chips">${RANK_ITEMS.map(r=>{const k=EX.rank.indexOf(r);return`<button class="chip${k>=0?' on':''}" data-act="exRank" data-v="${esc(r)}">${k>=0?(k+1)+'. ':''}${esc(r)}</button>`}).join('')}${EX.rank.length?'<button class="chip sm" data-act="exReset">Reset</button>':''}</div></div>
+  <div class="field"><label for="exo">3. In one line, what makes a place feel East Asian to you?</label><input id="exo" type="text" maxlength="200" value="${esc(EX.open)}" autocomplete="off"></div>
+  <div class="row"><button class="btn" data-act="exSkip">Skip</button><button class="btn pri big" data-act="exDone">Continue</button></div></div></div>`;
+  document.getElementById('exo').oninput=e=>{EX.open=e.target.value}}
+async function exFinish(skipped){await setPart({extraLikert:skipped?'':EX.lik||'',extraRank:skipped?'':EX.rank.join(' > '),extraOpen:skipped?'':EX.open.trim().slice(0,200),extraSkipped:skipped?'yes':''});
+  await logA(skipped?'extras skipped':'extras answered');EX={lik:0,rank:[],open:''};
+  if(S.bonusOrder.length){S.stage='bonusOffer';await saveSession();return render()}return finish('complete')}
+function rIntro(){app.innerHTML=`<div class="center"><div class="box"><h1>How it works</h1>${SHORT()}<button class="btn pri big" data-act="begin">Start</button></div></div>`}
 function rBonus(){app.innerHTML=`<div class="center"><div class="box"><h1>That's the main part done</h1><p>There are ${S.bonusOrder.length} more photos, about ${Math.max(2,Math.round(S.bonusOrder.length*.35))} minutes. These are a bit trickier. They're optional, and you can stop any time.</p><div class="row" style="justify-content:center;margin-top:28px"><button class="btn big" data-act="bonusNo">I'm done</button><button class="btn pri big" data-act="bonusYes">Keep going</button></div></div></div>`}
 let OPTIN={sent:false};
 function rThanks(){const inP=SET.mode==='inperson';
@@ -528,6 +543,11 @@ app.addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if
   case 'startP':if(!aboutOk())return;OPTIN={sent:false};startSession({age:SCR.age,design:SCR.design,media:SCR.media,beenEA:SCR.beenEA,country:matchCountry(SCR.country),state:matchCountry(SCR.country)==='India'?SCR.state:'',audio:SET.mode==='inperson'?SCR.audio:'',consent:true,rnote:''});break;
   case 'begin':S.stage='trial';await saveSession();await logA('participant started');rTrial();break;
   case 'bonusYes':S.phase='bonus';S.i=0;S.stage='trial';await setPart({bonusChoice:'yes'});await saveSession();await logA('bonus accepted');rTrial();break;
+  case 'exLik':EX.lik=+v;rExtra();break;
+  case 'exRank':{if(!EX.rank.includes(v))EX.rank.push(v);if(EX.rank.length===RANK_ITEMS.length-1)EX.rank.push(RANK_ITEMS.find(r=>!EX.rank.includes(r)));rExtra();break}
+  case 'exReset':EX.rank=[];rExtra();break;
+  case 'exSkip':exFinish(true);break;
+  case 'exDone':exFinish(false);break;
   case 'bonusNo':await setPart({bonusChoice:'no'});await logA('bonus declined');finish('complete');break;
   case 'handBack':if(await ask('Back to the start screen?','','Yes','No')){S=null;await saveSession();rWelcome()}break;
   case 'home':rHome();break;
